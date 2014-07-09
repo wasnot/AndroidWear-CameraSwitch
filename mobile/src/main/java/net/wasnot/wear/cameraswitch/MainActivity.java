@@ -24,6 +24,8 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    private final static String TAG = MainActivity.class.getSimpleName();
+
     private Camera mCamera;
     private SurfaceView mSurfaceView;
     private SurfaceHolder holder;
@@ -114,9 +116,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
 //        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-//            if (mCamera != null) {
-//                mCamera.takePicture(mShutterListener, null, mPictureListener);
-//            }
+//        shutter();
 //        }
 //        return true;
         return super.onTouchEvent(event);
@@ -134,9 +134,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mCamera != null) {
-                    mCamera.takePicture(mShutterListener, null, mPictureListener);
-                }
+                shutter();
             }
         });
 
@@ -153,12 +151,23 @@ public class MainActivity extends Activity {
         }
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent == null) {
+            return;
+        }
+        if (CameraShutterReceiver.ACTION_SHUTTER.equals(intent.getAction())) {
+            shutter();
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
-        menu.add(Menu.NONE,1,0,"camera");
+        menu.add(Menu.NONE, 1, 0, "camera");
+        menu.add(Menu.NONE, 2, 0, "notify");
         return true;
     }
 
@@ -203,9 +212,13 @@ public class MainActivity extends Activity {
             // プレビュー再開
             mCamera.startPreview();
             return true;
-        }else if(item.getItemId()==1){
+        } else if (item.getItemId() == 1) {
             Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
             startActivityForResult(intent, 0);
+            return true;
+        } else if (item.getItemId() == 2) {
+            NotificationUtil.showNotification(this);
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
@@ -250,5 +263,11 @@ public class MainActivity extends Activity {
         mSurfaceView.setLayoutParams(layoutParams);
 
 //        mCamera.setParameters(mParam);
+    }
+
+    private void shutter() {
+        if (mCamera != null) {
+            mCamera.takePicture(mShutterListener, null, mPictureListener);
+        }
     }
 }
