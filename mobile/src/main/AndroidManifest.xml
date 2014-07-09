@@ -15,8 +15,12 @@
             android:icon="@drawable/ic_launcher"
             android:label="@string/app_name"
             android:theme="@style/AppTheme">
+
+        <meta-data
+                android:name="com.google.android.gms.version"
+                android:value="@integer/google_play_services_version"/>
         <activity
-                android:name=".MainActivity"
+                android:name=".CameraActivity"
                 android:label="@string/app_name"
                 android:launchMode="singleInstance"
                 android:screenOrientation="portrait">
@@ -27,14 +31,12 @@
             </intent-filter>
         </activity>
 
-        <receiver
-                android:name=".CameraShutterReceiver"
-                android:enabled="false"
-                android:exported="false">
+        <service
+                android:name=".WearSwitchListenerService">
             <intent-filter>
-                <action android:name="net.wasnot.wear.cameraswitch.SHUTTER"/>
+                <action android:name="com.google.android.gms.wearable.BIND_LISTENER"/>
             </intent-filter>
-        </receiver>
+        </service>
     </application>
 
 </manifest>

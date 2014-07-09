@@ -1,14 +1,13 @@
 package net.wasnot.wear.cameraswitch;
 
+import java.util.List;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.hardware.Camera.CameraInfo;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,14 +16,15 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
-
-import java.util.List;
 
 
-public class MainActivity extends Activity {
+public class CameraActivity extends Activity {
 
-    private final static String TAG = MainActivity.class.getSimpleName();
+    private final static String TAG = CameraActivity.class.getSimpleName();
+    public final static String ACTION_SHUTTER = "net.wasnot.wear.cameraswitch.SHUTTER";
+    public final static String ACTION_FINISH = "net.wasnot.wear.cameraswitch.FINISH";
+
+    private boolean isShutter = false;
 
     private Camera mCamera;
     private SurfaceView mSurfaceView;
@@ -36,13 +36,14 @@ public class MainActivity extends Activity {
     private SurfaceHolder.Callback mSurfaceListener =
             new SurfaceHolder.Callback() {
                 public void surfaceCreated(SurfaceHolder holder) {
+                    Log.d(TAG, "surfaceCreated");
                     mCamera = Camera.open();
                     try {
                         mCamera.setDisplayOrientation(90);
                         Camera.Parameters parameters = mCamera.getParameters();
                         List<Camera.Size> list = parameters.getSupportedPreviewSizes();
-                        Toast.makeText(MainActivity.this, "test:" + list.size(), Toast.LENGTH_LONG)
-                                .show();
+//                        Toast.makeText(CameraActivity.this, "test:" + list.size(),
+//                                Toast.LENGTH_LONG)                                .show();
                         for (Camera.Size size : list) {
                             Log.d("camera", "size:" + size.width + "," + size.height);
                         }
@@ -54,6 +55,7 @@ public class MainActivity extends Activity {
                 }
 
                 public void surfaceDestroyed(SurfaceHolder holder) {
+                    Log.d(TAG, "surfaceDestroyed");
                     if (mCamera == null) {
                         return;
                     }
@@ -63,6 +65,7 @@ public class MainActivity extends Activity {
 
                 public void surfaceChanged(SurfaceHolder holder, int format, int width,
                         int height) {
+                    Log.d(TAG, "surfaceChanged");
                     if (mCamera == null) {
                         return;
                     }
@@ -71,13 +74,17 @@ public class MainActivity extends Activity {
 //                    mCamera.setParameters(parameters);
                     setPreviewSize(width, height);
                     mCamera.startPreview();
+                    if (isShutter) {
+                        shutter();
+                    }
                 }
             };
     // シャッターが押されたときに呼ばれるコールバック
     private Camera.ShutterCallback mShutterListener =
             new Camera.ShutterCallback() {
                 public void onShutter() {
-//                    Toast.makeText(MainActivity.this, "tdst", Toast.LENGTH_SHORT).show();
+//                    Toast.makeText(CameraActivity.this, "tdst", Toast.LENGTH_SHORT).show();
+                    isShutter = false;
                 }
             };
 
@@ -85,31 +92,9 @@ public class MainActivity extends Activity {
     private Camera.PictureCallback mPictureListener =
             new Camera.PictureCallback() {
                 public void onPictureTaken(byte[] data, Camera camera) {
-                    // SDカードにJPEGデータを保存する
-                    if (data != null) {
-//                        FileOutputStream myFOS = null;
-//                        try {
-//                            myFOS = new FileOutputStream(
-//                                    "/sdcard/camera_test" + System.currentTimeMillis() + ".jpg");
-//                            myFOS.write(data);
-//                            myFOS.close();
-//                        } catch (Exception e) {
-//                            e.printStackTrace();
-//                        }
-                        Bitmap bmp = null;
-                        bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
-
-//                        // 読み込む範囲
-//                        int previewWidth = camera.getParameters().getPreviewSize().width;
-//                        int previewHeight = camera.getParameters().getPreviewSize().height;
-//
-//                        // プレビューデータから Bitmap を生成
-//                        Bitmap bmp = ImageManager.getBitmapImageFromYUV(data, previewWidth,
-//                                previewHeight);
-                        ImageManager.addImageAsCamera(getContentResolver(), bmp);
-
-                        camera.startPreview();
-                    }
+                    ImageManager.addImageAsCamera(getContentResolver(),
+                            ImageManager.getBitmap(data));
+                    camera.startPreview();
                 }
             };
 
@@ -125,6 +110,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (getIntent() != null) {
+            String action = getIntent().getAction();
+            if (ACTION_FINISH.equals(action)) {
+                finish();
+                return;
+            } else if (ACTION_SHUTTER.equals(action)) {
+                isShutter = true;
+            }
+            setIntent(new Intent(this, CameraActivity.class));
+        }
+
         setContentView(R.layout.activity_main);
 
         mSurfaceView = (SurfaceView) findViewById(R.id.surfaceView);
@@ -153,20 +149,34 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onNewIntent(Intent intent) {
+        Log.d(TAG, "onNewIntent:" + intent);
         super.onNewIntent(intent);
         if (intent == null) {
             return;
         }
-        if (CameraShutterReceiver.ACTION_SHUTTER.equals(intent.getAction())) {
+        String action = intent.getAction();
+        if (ACTION_SHUTTER.equals(action)) {
+            isShutter = true;
             shutter();
+        } else if (ACTION_FINISH.equals(action)) {
+            finish();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mCamera == null) {
+            return;
+        }
+        mCamera.release();
+        mCamera = null;
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
-        menu.add(Menu.NONE, 1, 0, "camera");
         menu.add(Menu.NONE, 2, 0, "notify");
         return true;
     }
@@ -211,10 +221,6 @@ public class MainActivity extends Activity {
 
             // プレビュー再開
             mCamera.startPreview();
-            return true;
-        } else if (item.getItemId() == 1) {
-            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            startActivityForResult(intent, 0);
             return true;
         } else if (item.getItemId() == 2) {
             NotificationUtil.showNotification(this);
@@ -267,7 +273,14 @@ public class MainActivity extends Activity {
 
     private void shutter() {
         if (mCamera != null) {
-            mCamera.takePicture(mShutterListener, null, mPictureListener);
+            mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                @Override
+                public void onAutoFocus(boolean success, Camera camera) {
+                    if (mCamera != null) {
+                        mCamera.takePicture(mShutterListener, null, mPictureListener);
+                    }
+                }
+            });
         }
     }
 }

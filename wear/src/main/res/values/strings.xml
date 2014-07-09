@@ -4,5 +4,7 @@
     <string name="app_name">CameraSwitch</string>
     <string name="hello_round">Hello Round World!</string>
     <string name="hello_square">Hello Square World!</string>
+    <string name="turn_alarm_on">turn_alarm_on</string>
+    <string name="turn_alarm_off">turn_alarm_off</string>
 
 </resources>
