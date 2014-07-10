@@ -164,6 +164,11 @@ public class CameraActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
         if (mCamera == null) {
